@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: goph-keeper-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: keeper
+      POSTGRES_PASSWORD: keeperpassword
+      POSTGRES_DB: gophkeeper
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keeper -d gophkeeper"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio
+    container_name: goph-keeper-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keeperd:
+    build:
+      context: ..
+      dockerfile: build/keeperd.Dockerfile
+    container_name: goph-keeper-server
+    ports:
+      - "8080:8080"
+    environment:
+      ADDRESS: ":8080"
+      DATABASE_URI: "postgres://keeper:keeperpassword@postgres:5432/gophkeeper?sslmode=disable"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_ACCESS_KEY: "minioadmin"
+      MINIO_SECRET_KEY: "minioadmin"
+      MINIO_SECURE: "false"
+      JWT_SECRET: "local-development-jwt-secret"
+      ENCRYPTION_KEY: "local-dev-encryption-key-32-byte"
+      MAX_BINARY_SIZE_BYTES: "10485760"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  minio-data:

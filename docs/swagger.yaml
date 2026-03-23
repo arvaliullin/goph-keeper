@@ -1,0 +1,318 @@
+basePath: /
+definitions:
+  domain.Secret:
+    properties:
+      created_at:
+        description: CreatedAt время создания секрета.
+        type: string
+      data:
+        description: Data зашифрованные данные секрета.
+        items:
+          type: integer
+        type: array
+      deleted_at:
+        description: DeletedAt время мягкого удаления (nil если не удален).
+        type: string
+      id:
+        description: ID уникальный идентификатор секрета (UUID).
+        type: string
+      metadata:
+        description: Metadata зашифрованные метаданные секрета.
+        items:
+          type: integer
+        type: array
+      type:
+        allOf:
+        - $ref: '#/definitions/domain.SecretType'
+        description: Type тип секрета (login, text, binary, card).
+      updated_at:
+        description: UpdatedAt время последнего обновления секрета.
+        type: string
+      user_id:
+        description: UserID идентификатор владельца секрета.
+        type: integer
+    type: object
+  domain.SecretType:
+    enum:
+    - login
+    - text
+    - binary
+    - card
+    type: string
+    x-enum-varnames:
+    - SecretTypeLogin
+    - SecretTypeText
+    - SecretTypeBinary
+    - SecretTypeCard
+  handlers.authRequest:
+    properties:
+      login:
+        type: string
+      password:
+        type: string
+    type: object
+  handlers.authResponse:
+    properties:
+      token:
+        type: string
+    type: object
+  handlers.secretRequest:
+    properties:
+      data:
+        items:
+          type: integer
+        type: array
+      metadata:
+        items:
+          type: integer
+        type: array
+      type:
+        $ref: '#/definitions/domain.SecretType'
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: REST API для менеджера паролей GophKeeper.
+  title: GophKeeper API
+  version: "1.0"
+paths:
+  /api/v1/binary/{id}:
+    delete:
+      description: Удаляет бинарный файл и tombstone запись секрета
+      parameters:
+      - description: ID файла
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - ApiKeyAuth: []
+      summary: Удалить бинарный файл
+      tags:
+      - binary
+    get:
+      description: Скачивает и расшифровывает бинарный payload
+      parameters:
+      - description: ID файла
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: Binary data
+          schema:
+            type: string
+      security:
+      - ApiKeyAuth: []
+      summary: Скачать бинарный файл
+      tags:
+      - binary
+    post:
+      consumes:
+      - application/octet-stream
+      description: Загружает зашифрованный бинарный payload для бинарного секрета
+      parameters:
+      - description: ID файла
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+      security:
+      - ApiKeyAuth: []
+      summary: Загрузить бинарный файл
+      tags:
+      - binary
+  /api/v1/login:
+    post:
+      consumes:
+      - application/json
+      description: Аутентификация пользователя и получение JWT
+      parameters:
+      - description: Учетные данные
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.authRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.authResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "401":
+          description: Unauthorized
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Аутентификация пользователя
+      tags:
+      - auth
+  /api/v1/register:
+    post:
+      consumes:
+      - application/json
+      description: Регистрация нового пользователя по логину и паролю
+      parameters:
+      - description: Данные для регистрации
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.authRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/handlers.authResponse'
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "409":
+          description: Conflict
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Регистрация пользователя
+      tags:
+      - auth
+  /api/v1/secrets:
+    get:
+      description: Возвращает все секреты текущего пользователя или изменения после
+        updated_after
+      parameters:
+      - description: RFC3339 timestamp for incremental sync
+        in: query
+        name: updated_after
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/domain.Secret'
+            type: array
+      security:
+      - ApiKeyAuth: []
+      summary: Получить список секретов
+      tags:
+      - secrets
+    post:
+      consumes:
+      - application/json
+      description: Создает новый секрет (пароль, текст, карту и т.д.)
+      parameters:
+      - description: Данные секрета
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.secretRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Secret'
+      security:
+      - ApiKeyAuth: []
+      summary: Создать секрет
+      tags:
+      - secrets
+  /api/v1/secrets/{id}:
+    delete:
+      description: Удаляет секрет по ID
+      parameters:
+      - description: ID секрета
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      security:
+      - ApiKeyAuth: []
+      summary: Удалить секрет
+      tags:
+      - secrets
+    get:
+      description: Возвращает данные секрета по ID
+      parameters:
+      - description: ID секрета
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Secret'
+      security:
+      - ApiKeyAuth: []
+      summary: Получить секрет
+      tags:
+      - secrets
+    put:
+      consumes:
+      - application/json
+      description: Обновляет данные и метаданные существующего секрета
+      parameters:
+      - description: ID секрета
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Новые данные секрета
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.secretRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/domain.Secret'
+      security:
+      - ApiKeyAuth: []
+      summary: Обновить секрет
+      tags:
+      - secrets
+securityDefinitions:
+  ApiKeyAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
