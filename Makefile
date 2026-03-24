@@ -45,7 +45,7 @@ run-client: ## Запустить клиент локально
 
 .PHONY: test
 test: ## Запустить все тесты с общим coverage gate
-	@packages=$$(go list ./... | awk '!/\/docs$$/ && !/\/internal\/core\/ports\/mocks$$/'); \
+	@packages=$$(go list ./... | awk '!/\/docs$$/ && !/\/internal\/core\/ports\/mocks$$/ && !/\/testhelpers$$/ && !/\/migrations$$/'); \
 	coverpkg=$$(printf "%s\n" "$$packages" | paste -sd, -); \
 	go test -coverpkg "$$coverpkg" -coverprofile=coverage.out $$packages; \
 	total=$$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%","",$$3); print $$3}'); \

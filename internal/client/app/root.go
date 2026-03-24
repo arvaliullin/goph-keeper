@@ -307,13 +307,13 @@ func Execute() {
 				fmt.Println(err)
 				return
 			}
-			secrets, err := client.ListSecrets()
-			if err != nil {
-				fmt.Printf("Ошибка получения списка: %v\n", err)
-				return
-			}
-			fmt.Printf("Найдено секретов: %d\n", len(secrets))
-			for _, s := range secrets {
+			count := 0
+			for s, iterErr := range client.SecretsIter() {
+				if iterErr != nil {
+					fmt.Printf("Ошибка получения списка: %v\n", iterErr)
+					return
+				}
+				count++
 				meta := string(s.Metadata)
 				if len(meta) > 50 {
 					meta = meta[:50] + "..."
@@ -324,6 +324,7 @@ func Execute() {
 					fmt.Printf("ID: %s | Type: %s | Created: %s\n", s.ID, s.Type, s.CreatedAt.Format("2006-01-02 15:04:05"))
 				}
 			}
+			fmt.Printf("Найдено секретов: %d\n", count)
 		},
 	}
 

@@ -12,6 +12,7 @@ package mocks
 import (
 	context "context"
 	io "io"
+	iter "iter"
 	reflect "reflect"
 	time "time"
 
@@ -154,6 +155,20 @@ func (m *MockSecretService) List(ctx context.Context, userID int64) ([]*domain.S
 func (mr *MockSecretServiceMockRecorder) List(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockSecretService)(nil).List), ctx, userID)
+}
+
+// Secrets mocks base method.
+func (m *MockSecretService) Secrets(ctx context.Context, userID int64) iter.Seq2[*domain.Secret, error] {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Secrets", ctx, userID)
+	ret0, _ := ret[0].(iter.Seq2[*domain.Secret, error])
+	return ret0
+}
+
+// Secrets indicates an expected call of Secrets.
+func (mr *MockSecretServiceMockRecorder) Secrets(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Secrets", reflect.TypeOf((*MockSecretService)(nil).Secrets), ctx, userID)
 }
 
 // Sync mocks base method.

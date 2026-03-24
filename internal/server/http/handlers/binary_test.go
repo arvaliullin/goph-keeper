@@ -10,7 +10,6 @@ import (
 
 	"github.com/arvaliullin/goph-keeper/internal/core/ports/mocks"
 	"github.com/arvaliullin/goph-keeper/internal/server/http/middleware"
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -26,10 +25,7 @@ func TestBinaryHandler_Upload(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/binary/file1", bytes.NewReader(data))
 	req.ContentLength = int64(len(data))
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "file1")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req.SetPathValue("id", "file1")
 
 	rec := httptest.NewRecorder()
 
@@ -51,10 +47,7 @@ func TestBinaryHandler_Download(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/binary/file1", nil)
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "file1")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req.SetPathValue("id", "file1")
 
 	rec := httptest.NewRecorder()
 
@@ -80,10 +73,7 @@ func TestBinaryHandler_Delete(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/binary/file1", nil)
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "file1")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req.SetPathValue("id", "file1")
 
 	rec := httptest.NewRecorder()
 

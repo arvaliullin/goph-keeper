@@ -11,7 +11,6 @@ import (
 	"github.com/arvaliullin/goph-keeper/internal/core/domain"
 	"github.com/arvaliullin/goph-keeper/internal/core/ports/mocks"
 	"github.com/arvaliullin/goph-keeper/internal/server/http/middleware"
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -58,9 +57,7 @@ func TestSecretHandler_Errors(t *testing.T) {
 	t.Run("Update_ServiceErr", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPut, "/api/v1/secrets/1", bytes.NewReader([]byte("{}")))
 		req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("id", "1")
-		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 		mockSecretService.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, domain.ErrSecretNotFound)
 		handler.Update(rec, req)
@@ -78,9 +75,7 @@ func TestSecretHandler_Errors(t *testing.T) {
 	t.Run("Get_NotFound", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/secrets/1", nil)
 		req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("id", "1")
-		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 		mockSecretService.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, domain.ErrSecretNotFound)
 		handler.Get(rec, req)
@@ -98,9 +93,7 @@ func TestSecretHandler_Errors(t *testing.T) {
 	t.Run("Delete_ServiceErr", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, "/api/v1/secrets/1", nil)
 		req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("id", "1")
-		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 		mockSecretService.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.ErrSecretNotFound)
 		handler.Delete(rec, req)

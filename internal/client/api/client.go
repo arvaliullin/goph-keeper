@@ -3,7 +3,7 @@ package api
 import (
 	"fmt"
 	"io"
-	"net/http"
+	"iter"
 	"net/url"
 	"time"
 
@@ -14,7 +14,6 @@ import (
 // Client клиент для взаимодействия с GophKeeper API.
 type Client struct {
 	client *resty.Client
-	token  string
 }
 
 // NewClient создает новый экземпляр API клиента.
@@ -26,7 +25,6 @@ func NewClient(baseURL string) *Client {
 
 // SetToken устанавливает JWT токен для последующих запросов.
 func (c *Client) SetToken(token string) {
-	c.token = token
 	c.client.SetAuthToken(token)
 }
 
@@ -181,76 +179,63 @@ func (c *Client) DeleteSecret(id string) error {
 	return nil
 }
 
+// SecretsIter возвращает итератор по секретам пользователя.
+func (c *Client) SecretsIter() iter.Seq2[*domain.Secret, error] {
+	return func(yield func(*domain.Secret, error) bool) {
+		secrets, err := c.ListSecrets()
+		if err != nil {
+			yield(nil, err)
+			return
+		}
+		for _, s := range secrets {
+			if !yield(s, nil) {
+				return
+			}
+		}
+	}
+}
+
 // UploadBinary загружает бинарный файл.
 func (c *Client) UploadBinary(id string, reader io.Reader, size int64) error {
-	req, err := http.NewRequest("POST", c.client.BaseURL+"/api/v1/binary/"+url.PathEscape(id), reader)
+	resp, err := c.client.R().
+		SetBody(reader).
+		SetContentLength(true).
+		SetHeader("Content-Type", "application/octet-stream").
+		Post("/api/v1/binary/" + url.PathEscape(id))
 	if err != nil {
 		return err
 	}
-	req.ContentLength = size
-	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Content-Type", "application/octet-stream")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
+	if resp.IsError() {
+		return fmt.Errorf("upload binary failed: %s", resp.String())
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("upload binary failed: %s", string(body))
-	}
-
 	return nil
 }
 
 // DownloadBinary скачивает бинарный файл.
 func (c *Client) DownloadBinary(id string) ([]byte, error) {
-	req, err := http.NewRequest("GET", c.client.BaseURL+"/api/v1/binary/"+url.PathEscape(id), nil)
+	resp, err := c.client.R().
+		SetDoNotParseResponse(true).
+		Get("/api/v1/binary/" + url.PathEscape(id))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
+	defer resp.RawBody().Close()
+	if resp.IsError() {
+		body, _ := io.ReadAll(resp.RawBody())
 		return nil, fmt.Errorf("download binary failed: %s", string(body))
 	}
-
-	return io.ReadAll(resp.Body)
+	return io.ReadAll(resp.RawBody())
 }
 
 // DeleteBinary удаляет бинарный секрет.
 func (c *Client) DeleteBinary(id string) error {
-	req, err := http.NewRequest("DELETE", c.client.BaseURL+"/api/v1/binary/"+url.PathEscape(id), nil)
+	resp, err := c.client.R().
+		Delete("/api/v1/binary/" + url.PathEscape(id))
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Authorization", "Bearer "+c.token)
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return err
+	if resp.IsError() {
+		return fmt.Errorf("delete binary failed: %s", resp.String())
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusNoContent {
-		body, readErr := io.ReadAll(resp.Body)
-		if readErr != nil {
-			return readErr
-		}
-		return fmt.Errorf("delete binary failed: %s", string(body))
-	}
-
 	return nil
 }

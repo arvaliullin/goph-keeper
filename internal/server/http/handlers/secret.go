@@ -8,7 +8,6 @@ import (
 	"github.com/arvaliullin/goph-keeper/internal/core/domain"
 	"github.com/arvaliullin/goph-keeper/internal/core/ports"
 	"github.com/arvaliullin/goph-keeper/internal/server/http/middleware"
-	"github.com/go-chi/chi/v5"
 )
 
 // SecretHandler обрабатывает запросы управления секретами.
@@ -80,7 +79,7 @@ func (h *SecretHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	if id == "" {
 		http.Error(w, "missing id", http.StatusBadRequest)
 		return
@@ -163,7 +162,7 @@ func (h *SecretHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	if id == "" {
 		http.Error(w, "missing id", http.StatusBadRequest)
 		return
@@ -196,7 +195,7 @@ func (h *SecretHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	if id == "" {
 		http.Error(w, "missing id", http.StatusBadRequest)
 		return

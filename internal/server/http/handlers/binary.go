@@ -6,7 +6,6 @@ import (
 
 	"github.com/arvaliullin/goph-keeper/internal/core/ports"
 	"github.com/arvaliullin/goph-keeper/internal/server/http/middleware"
-	"github.com/go-chi/chi/v5"
 )
 
 // BinaryHandler обрабатывает запросы загрузки и скачивания бинарных данных.
@@ -36,7 +35,7 @@ func (h *BinaryHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	if id == "" {
 		http.Error(w, "missing id", http.StatusBadRequest)
 		return
@@ -80,7 +79,7 @@ func (h *BinaryHandler) Download(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	if id == "" {
 		http.Error(w, "missing id", http.StatusBadRequest)
 		return
@@ -115,7 +114,7 @@ func (h *BinaryHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := chi.URLParam(r, "id")
+	id := r.PathValue("id")
 	if id == "" {
 		http.Error(w, "missing id", http.StatusBadRequest)
 		return

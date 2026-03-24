@@ -20,6 +20,7 @@ import (
 // PostgresContainer представляет тестовый контейнер PostgreSQL.
 type PostgresContainer struct {
 	*postgres.PostgresContainer
+	// DSN строка подключения к тестовой базе данных.
 	DSN string
 }
 

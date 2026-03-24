@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -113,6 +114,74 @@ func TestSecretService_List(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Len(t, res, 2)
 	assert.Equal(t, []byte("data1"), res[0].Data)
+}
+
+func TestSecretService_Secrets(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockSecretRepository(ctrl)
+	mockCrypto := mocks.NewMockCryptoService(ctrl)
+	service := NewSecretService(mockRepo, nil, mockCrypto)
+
+	secrets := []*domain.Secret{
+		{ID: "sec1", Data: []byte("enc_data1"), Metadata: []byte("enc_meta1"), CreatedAt: time.Now()},
+		{ID: "sec2", Data: []byte("enc_data2"), Metadata: []byte("enc_meta2"), CreatedAt: time.Now()},
+	}
+
+	mockRepo.EXPECT().ListByUserID(gomock.Any(), int64(1)).Return(secrets, nil)
+	mockCrypto.EXPECT().Decrypt([]byte("enc_data1")).Return([]byte("data1"), nil)
+	mockCrypto.EXPECT().Decrypt([]byte("enc_meta1")).Return([]byte("meta1"), nil)
+	mockCrypto.EXPECT().Decrypt([]byte("enc_data2")).Return([]byte("data2"), nil)
+	mockCrypto.EXPECT().Decrypt([]byte("enc_meta2")).Return([]byte("meta2"), nil)
+
+	var collected []*domain.Secret
+	for sec, err := range service.Secrets(context.Background(), 1) {
+		assert.NoError(t, err)
+		collected = append(collected, sec)
+	}
+	assert.Len(t, collected, 2)
+	assert.Equal(t, []byte("data1"), collected[0].Data)
+	assert.Equal(t, []byte("data2"), collected[1].Data)
+}
+
+func TestSecretService_Secrets_RepoErr(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockSecretRepository(ctrl)
+	mockCrypto := mocks.NewMockCryptoService(ctrl)
+	service := NewSecretService(mockRepo, nil, mockCrypto)
+
+	mockRepo.EXPECT().ListByUserID(gomock.Any(), int64(1)).Return(nil, errors.New("db error"))
+
+	var gotErr error
+	for _, err := range service.Secrets(context.Background(), 1) {
+		gotErr = err
+	}
+	assert.Error(t, gotErr)
+}
+
+func TestSecretService_Secrets_DecryptErr(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := mocks.NewMockSecretRepository(ctrl)
+	mockCrypto := mocks.NewMockCryptoService(ctrl)
+	service := NewSecretService(mockRepo, nil, mockCrypto)
+
+	secrets := []*domain.Secret{
+		{ID: "sec1", Data: []byte("enc_data1"), Metadata: []byte("enc_meta1"), CreatedAt: time.Now()},
+	}
+
+	mockRepo.EXPECT().ListByUserID(gomock.Any(), int64(1)).Return(secrets, nil)
+	mockCrypto.EXPECT().Decrypt([]byte("enc_data1")).Return(nil, errors.New("decrypt error"))
+
+	var gotErr error
+	for _, err := range service.Secrets(context.Background(), 1) {
+		gotErr = err
+	}
+	assert.Error(t, gotErr)
 }
 
 func TestSecretService_Sync(t *testing.T) {

@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"iter"
 	"log"
 	"time"
 
@@ -164,27 +165,55 @@ func (s *SecretService) Sync(ctx context.Context, userID int64, updatedAfter tim
 	return secrets, nil
 }
 
-func (s *SecretService) decryptSecrets(secrets []*domain.Secret) error {
-	for _, sec := range secrets {
-		if sec.DeletedAt != nil {
-			sec.Data = nil
-			sec.Metadata = nil
-			continue
-		}
-
-		decData, err := s.cryptoService.Decrypt(sec.Data)
+// Secrets возвращает итератор по секретам пользователя.
+func (s *SecretService) Secrets(ctx context.Context, userID int64) iter.Seq2[*domain.Secret, error] {
+	return func(yield func(*domain.Secret, error) bool) {
+		secrets, err := s.repo.ListByUserID(ctx, userID)
 		if err != nil {
-			return err
+			yield(nil, err)
+			return
 		}
-		sec.Data = decData
+		for _, sec := range secrets {
+			if err := s.decryptSecret(sec); err != nil {
+				if !yield(nil, err) {
+					return
+				}
+				continue
+			}
+			if !yield(sec, nil) {
+				return
+			}
+		}
+	}
+}
 
-		decMeta, err := s.cryptoService.Decrypt(sec.Metadata)
-		if err != nil {
-			return err
-		}
-		sec.Metadata = decMeta
+func (s *SecretService) decryptSecret(sec *domain.Secret) error {
+	if sec.DeletedAt != nil {
+		sec.Data = nil
+		sec.Metadata = nil
+		return nil
 	}
 
+	decData, err := s.cryptoService.Decrypt(sec.Data)
+	if err != nil {
+		return err
+	}
+	sec.Data = decData
+
+	decMeta, err := s.cryptoService.Decrypt(sec.Metadata)
+	if err != nil {
+		return err
+	}
+	sec.Metadata = decMeta
+	return nil
+}
+
+func (s *SecretService) decryptSecrets(secrets []*domain.Secret) error {
+	for _, sec := range secrets {
+		if err := s.decryptSecret(sec); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

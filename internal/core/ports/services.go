@@ -5,6 +5,7 @@ package ports
 import (
 	"context"
 	"io"
+	"iter"
 	"time"
 
 	"github.com/arvaliullin/goph-keeper/internal/core/domain"
@@ -32,6 +33,8 @@ type SecretService interface {
 	List(ctx context.Context, userID int64) ([]*domain.Secret, error)
 	// Sync возвращает секреты, измененные после указанного времени.
 	Sync(ctx context.Context, userID int64, updatedAfter time.Time) ([]*domain.Secret, error)
+	// Secrets возвращает итератор по секретам пользователя.
+	Secrets(ctx context.Context, userID int64) iter.Seq2[*domain.Secret, error]
 }
 
 // BinaryService контракт сервиса управления бинарными файлами.

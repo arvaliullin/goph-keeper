@@ -18,6 +18,7 @@ const (
 // MinioContainer представляет тестовый контейнер MinIO.
 type MinioContainer struct {
 	*minio.MinioContainer
+	// Endpoint адрес подключения к тестовому экземпляру MinIO.
 	Endpoint string
 }
 

@@ -12,12 +12,29 @@ import (
 
 // SecretRepository реализация хранилища секретов в PostgreSQL.
 type SecretRepository struct {
-	db ports.PostgresClient
+	Repository[domain.Secret]
 }
 
 // NewSecretRepository создает новый экземпляр SecretRepository.
 func NewSecretRepository(db ports.PostgresClient) *SecretRepository {
-	return &SecretRepository{db: db}
+	return &SecretRepository{
+		Repository: Repository[domain.Secret]{
+			DB:   db,
+			Scan: scanSecret,
+		},
+	}
+}
+
+func scanSecret(row pgx.Row) (*domain.Secret, error) {
+	s := &domain.Secret{}
+	err := row.Scan(&s.ID, &s.UserID, &s.Type, &s.Data, &s.Metadata, &s.CreatedAt, &s.UpdatedAt, &s.DeletedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, domain.ErrSecretNotFound
+		}
+		return nil, err
+	}
+	return s, nil
 }
 
 // Create сохраняет новый секрет в БД.
@@ -32,7 +49,7 @@ func (r *SecretRepository) Create(ctx context.Context, secret *domain.Secret) er
 	}
 	secret.UpdatedAt = now
 
-	_, err := r.db.Exec(
+	_, err := r.DB.Exec(
 		ctx,
 		query,
 		secret.ID,
@@ -55,7 +72,7 @@ func (r *SecretRepository) Update(ctx context.Context, secret *domain.Secret) er
 		WHERE id = $4 AND user_id = $5 AND deleted_at IS NULL`
 
 	secret.UpdatedAt = time.Now()
-	res, err := r.db.Exec(ctx, query, secret.Data, secret.Metadata, secret.UpdatedAt, secret.ID, secret.UserID)
+	res, err := r.DB.Exec(ctx, query, secret.Data, secret.Metadata, secret.UpdatedAt, secret.ID, secret.UserID)
 	if err != nil {
 		return err
 	}
@@ -72,7 +89,7 @@ func (r *SecretRepository) Delete(ctx context.Context, id string, userID int64) 
 		SET deleted_at = $1, updated_at = $1
 		WHERE id = $2 AND user_id = $3 AND deleted_at IS NULL`
 	deletedAt := time.Now()
-	res, err := r.db.Exec(ctx, query, deletedAt, id, userID)
+	res, err := r.DB.Exec(ctx, query, deletedAt, id, userID)
 	if err != nil {
 		return err
 	}
@@ -88,18 +105,7 @@ func (r *SecretRepository) GetByID(ctx context.Context, id string, userID int64)
 		SELECT id, user_id, type, data, metadata, created_at, updated_at, deleted_at
 		FROM secrets 
 		WHERE id = $1 AND user_id = $2 AND deleted_at IS NULL`
-
-	s := &domain.Secret{}
-	err := r.db.QueryRow(ctx, query, id, userID).Scan(
-		&s.ID, &s.UserID, &s.Type, &s.Data, &s.Metadata, &s.CreatedAt, &s.UpdatedAt, &s.DeletedAt,
-	)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, domain.ErrSecretNotFound
-		}
-		return nil, err
-	}
-	return s, nil
+	return r.QueryOne(ctx, query, id, userID)
 }
 
 // ListByUserID возвращает все секреты пользователя.
@@ -109,27 +115,7 @@ func (r *SecretRepository) ListByUserID(ctx context.Context, userID int64) ([]*d
 		FROM secrets 
 		WHERE user_id = $1 AND deleted_at IS NULL
 		ORDER BY updated_at DESC`
-
-	rows, err := r.db.Query(ctx, query, userID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var secrets []*domain.Secret
-	for rows.Next() {
-		s := &domain.Secret{}
-		if err := rows.Scan(&s.ID, &s.UserID, &s.Type, &s.Data, &s.Metadata, &s.CreatedAt, &s.UpdatedAt, &s.DeletedAt); err != nil {
-			return nil, err
-		}
-		secrets = append(secrets, s)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return secrets, nil
+	return r.QueryMany(ctx, query, userID)
 }
 
 // SyncByUserID возвращает измененные секреты пользователя, включая tombstone записи.
@@ -139,25 +125,5 @@ func (r *SecretRepository) SyncByUserID(ctx context.Context, userID int64, updat
 		FROM secrets
 		WHERE user_id = $1 AND updated_at > $2
 		ORDER BY updated_at DESC`
-
-	rows, err := r.db.Query(ctx, query, userID, updatedAfter)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var secrets []*domain.Secret
-	for rows.Next() {
-		s := &domain.Secret{}
-		if err := rows.Scan(&s.ID, &s.UserID, &s.Type, &s.Data, &s.Metadata, &s.CreatedAt, &s.UpdatedAt, &s.DeletedAt); err != nil {
-			return nil, err
-		}
-		secrets = append(secrets, s)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return secrets, nil
+	return r.QueryMany(ctx, query, userID, updatedAfter)
 }

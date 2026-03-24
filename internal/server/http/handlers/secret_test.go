@@ -12,7 +12,6 @@ import (
 	"github.com/arvaliullin/goph-keeper/internal/core/domain"
 	"github.com/arvaliullin/goph-keeper/internal/core/ports/mocks"
 	"github.com/arvaliullin/goph-keeper/internal/server/http/middleware"
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -54,10 +53,7 @@ func TestSecretHandler_Get(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "/api/v1/secrets/sec1", nil)
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "sec1")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req.SetPathValue("id", "sec1")
 
 	rec := httptest.NewRecorder()
 
@@ -86,10 +82,7 @@ func TestSecretHandler_Update(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodPut, "/api/v1/secrets/sec1", bytes.NewReader(body))
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "sec1")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req.SetPathValue("id", "sec1")
 
 	rec := httptest.NewRecorder()
 
@@ -111,10 +104,7 @@ func TestSecretHandler_Delete(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodDelete, "/api/v1/secrets/sec1", nil)
 	req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-
-	rctx := chi.NewRouteContext()
-	rctx.URLParams.Add("id", "sec1")
-	req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+	req.SetPathValue("id", "sec1")
 
 	rec := httptest.NewRecorder()
 

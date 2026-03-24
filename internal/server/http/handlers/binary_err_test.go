@@ -10,7 +10,6 @@ import (
 	"github.com/arvaliullin/goph-keeper/internal/core/domain"
 	"github.com/arvaliullin/goph-keeper/internal/core/ports/mocks"
 	"github.com/arvaliullin/goph-keeper/internal/server/http/middleware"
-	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
 )
@@ -41,9 +40,7 @@ func TestBinaryHandler_Errors(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/binary/1", bytes.NewReader([]byte{}))
 		req.ContentLength = 0
 		req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("id", "1")
-		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 		handler.Upload(rec, req)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
@@ -53,9 +50,7 @@ func TestBinaryHandler_Errors(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/binary/1", bytes.NewReader([]byte("data")))
 		req.ContentLength = 4
 		req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("id", "1")
-		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 		mockBinaryService.EXPECT().Upload(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.ErrBinarySecretRequired)
 		handler.Upload(rec, req)
@@ -65,9 +60,7 @@ func TestBinaryHandler_Errors(t *testing.T) {
 	t.Run("Download_ServiceErr", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/binary/1", nil)
 		req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("id", "1")
-		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 		mockBinaryService.EXPECT().Download(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, domain.ErrSecretNotFound)
 		handler.Download(rec, req)
@@ -78,9 +71,7 @@ func TestBinaryHandler_Errors(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/v1/binary/1", bytes.NewReader([]byte("large")))
 		req.ContentLength = 5
 		req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("id", "1")
-		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 		handler.Upload(rec, req)
 		assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
@@ -89,9 +80,7 @@ func TestBinaryHandler_Errors(t *testing.T) {
 	t.Run("Delete_ServiceErr", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, "/api/v1/binary/1", nil)
 		req = req.WithContext(context.WithValue(req.Context(), middleware.UserIDKey, int64(1)))
-		rctx := chi.NewRouteContext()
-		rctx.URLParams.Add("id", "1")
-		req = req.WithContext(context.WithValue(req.Context(), chi.RouteCtxKey, rctx))
+		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 		mockBinaryService.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.ErrSecretNotFound)
 		handler.Delete(rec, req)
